@@ -43,12 +43,20 @@ int main(int argc, char **argv)
     }
 
     geometry_msgs::PoseStamped pose;
+    pose.header.stamp = ros::Time::now();
+    pose.header.frame_id = "map";
     pose.pose.position.x = 0;
     pose.pose.position.y = 0;
     pose.pose.position.z = 1;
+    pose.pose.orientation.x = 0;
+    pose.pose.orientation.y = 0;
+    pose.pose.orientation.z = 0;
+    pose.pose.orientation.w = 1;
+    
 
     //send a few setpoints before starting
     for(int i = 100; ros::ok() && i > 0; --i){
+        pose.header.stamp = ros::Time::now();
         local_pos_pub.publish(pose);
         ros::spinOnce();
         rate.sleep();
@@ -85,7 +93,7 @@ int main(int argc, char **argv)
                 last_request = ros::Time::now();
             }
         }
-
+        pose.header.stamp = ros::Time::now();
         local_pos_pub.publish(pose);
 		
 		distance = std::pow((current_local_pos.pose.position.x - pose.pose.position.x),2) 
