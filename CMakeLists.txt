@@ -17,10 +17,12 @@ find_package(catkin REQUIRED COMPONENTS
   tf2
   tf2_ros
   std_msgs
+  message_generation
 )
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
+include_directories("/usr/include/eigen3")
 
 
 ## Uncomment this if the package has a setup.py. This macro ensures
@@ -65,6 +67,13 @@ find_package(catkin REQUIRED COMPONENTS
 #   Service1.srv
 #   Service2.srv
 # )
+add_message_files(
+  FILES
+  PTStates.msg
+  ActuatorControl0.msg
+)
+
+
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -83,6 +92,12 @@ find_package(catkin REQUIRED COMPONENTS
 #  geometry_msgs
 #  std_msgs
 #)
+
+generate_messages(
+  DEPENDENCIES
+  geometry_msgs
+  std_msgs
+)
 
 
 ################################################
@@ -136,6 +151,7 @@ include_directories(
 # include
   ${catkin_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIR}
+  ${Eigen_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
