@@ -169,6 +169,7 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/offboardholy_node.cpp)
 add_executable(offb_control_node src/offb_node.cpp)
+add_executable(get_states_node src/getStates.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -185,6 +186,12 @@ add_executable(offb_control_node src/offb_node.cpp)
 #   ${catkin_LIBRARIES}
 # )
 target_link_libraries(offb_control_node ${catkin_LIBRARIES})
+target_link_libraries(get_states_node ${catkin_LIBRARIES})
+
+add_subdirectory(src/StabController)
+add_subdirectory(src/TracController)
+target_link_libraries(get_states_node StabController)
+target_link_libraries(get_states_node TracController)
 
 
 #############
