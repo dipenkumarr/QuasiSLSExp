@@ -190,6 +190,8 @@ target_link_libraries(get_states_node ${catkin_LIBRARIES})
 
 add_subdirectory(src/StabController)
 add_subdirectory(src/TracController)
+target_link_libraries(offb_control_node StabController)
+target_link_libraries(offb_control_node TracController)
 target_link_libraries(get_states_node StabController)
 target_link_libraries(get_states_node TracController)
 

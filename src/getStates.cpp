@@ -82,8 +82,6 @@ int main(int argc, char **argv)
   ros::Subscriber local_vel_sub = nh.subscribe<geometry_msgs::TwistStamped>("mavros/local_position/velocity_local",10,vel_cb);
   ros::Subscriber gazebo_state_sub = nh.subscribe<gazebo_msgs::LinkStates>("gazebo/link_states", 10, gazebo_state_cb);
 
-  ros::Publisher local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local", 10);
-  ros::Publisher attitude_setpoint_pub = nh.advertise<mavros_msgs::AttitudeTarget>("mavros/setpoint_raw/attitude", 10);
   ros::Publisher sls_state_pub = nh.advertise<offboardholy::PTStates>("/offboardholy/sls_state", 10);
   ros::Publisher target_attitude_pub = nh.advertise<mavros_msgs::AttitudeTarget>("/offboardholy/target_attitude", 10);
 
@@ -103,27 +101,6 @@ int main(int argc, char **argv)
   attitude.orientation.w = 0;
   attitude.thrust = 0.2;
 
-  
-
-  //send a few setpoints before starting
-  for(int i = 100; ros::ok() && i > 0; --i){
-      // pose.header.stamp = ros::Time::now();
-      // local_pos_pub.publish(pose);
-      attitude.header.stamp = ros::Time::now();
-      attitude_setpoint_pub.publish(attitude);
-      ros::spinOnce();
-      rate.sleep();
-  }
-
-  mavros_msgs::SetMode offb_set_mode;
-  offb_set_mode.request.custom_mode = "OFFBOARD";
-
-  mavros_msgs::CommandBool arm_cmd;
-  arm_cmd.request.value = true;
-
-	mavros_msgs::SetMode land_mode;
-	land_mode.request.custom_mode = "AUTO.LAND";
-
     ros::Time last_request = ros::Time::now();
 
     double distance = 0;
@@ -131,25 +108,15 @@ int main(int argc, char **argv)
     int stage = 0;
 
     while(ros::ok()){   
-        attitude.header.stamp = ros::Time::now();
-        // attitude_setpoint_pub.publish(attitude);
         PT_state_pub(sls_state_pub);
-        double dv[10] = {};
-        double controller_output[3] = {};
-        double Kv12[12] = {2.2361,    3.1623, 3.1623,   3.0777,    8.4827,    8.4827,  0,    9.7962,    9.7962,  0,    5.4399,    5.4399};
-        double Param[4] = {1.5, 0.2, 1, 9.8};
-        for (int i=0;i<10; i++){
-          dv[i] = PTState.PT_states[i];
-          // ROS_INFO_STREAM( "dv[i]: "<< i << " : " << dv[i] << "\n");
-        }
+        
         if( current_state.mode != "OFFBOARD"){
           t0 = ros::Time::now().toSec();
           // ROS_INFO_STREAM(t0);
         }
-        StabController(dv, Kv12, Param, controller_output);
+        
         // TracController(dv, Kv12, Param,  ros::Time::now().toSec()-t0, controller_output);
-        force_attitude_convert(controller_output, attitude);
-        target_attitude_pub.publish(attitude);
+        
 
         // ROS_INFO_STREAM("gazebo position: " << quadpose.position.x  << "  " << quadpose.position.y << "  " << quadpose.position.z );
         // ROS_INFO_STREAM("px4 position: " << current_local_pos.pose.position.x << "  " << current_local_pos.pose.position.y << "  " << current_local_pos.pose.position.z);
@@ -159,27 +126,6 @@ int main(int argc, char **argv)
     }
 
     return 0;
-}
-
-void force_attitude_convert(double controller_output[3], mavros_msgs::AttitudeTarget &attitude){
-  attitude.header.stamp = ros::Time::now();
-  double roll,pitch,yaw, thrust;
-  thrust = sqrt(controller_output[0]*controller_output[0] + controller_output[1]*controller_output[1] + controller_output[2]*controller_output[2]);
-  yaw = 0;
-  roll = std::asin(controller_output[1]/thrust);
-  pitch = std::atan2(controller_output[0], -controller_output[2]);
-
-  tf2::Quaternion attitude_target_q;
-  attitude_target_q.setRPY(roll, pitch, yaw);
-  attitude.orientation.x = attitude_target_q.getX();
-  attitude.orientation.y = attitude_target_q.getY();
-  attitude.orientation.z = attitude_target_q.getZ();
-  attitude.orientation.w = attitude_target_q.getW();
-
-  // attitude.thrust = (thrust-16.67122)/20 + 0.8168;
-  attitude.thrust = (thrust-16.67122)/20 + 0.7168;
-
-  // ROS_INFO_STREAM("Force: " << controller_output[0]<< "   " << controller_output[1]<< "   " << controller_output[2] << " orientation " << roll << "  " << pitch);
 }
 
 

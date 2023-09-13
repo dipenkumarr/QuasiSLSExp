@@ -5,7 +5,7 @@
 // File: StabController_data.h
 //
 // MATLAB Coder version            : 5.6
-// C/C++ source code generated on  : 09-Sep-2023 20:42:42
+// C/C++ source code generated on  : 12-Sep-2023 17:59:47
 //
 
 #ifndef STABCONTROLLER_DATA_H

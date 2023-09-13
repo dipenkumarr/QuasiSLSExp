@@ -5,7 +5,7 @@
 // File: StabController.h
 //
 // MATLAB Coder version            : 5.6
-// C/C++ source code generated on  : 09-Sep-2023 20:42:42
+// C/C++ source code generated on  : 12-Sep-2023 17:59:47
 //
 
 #ifndef STABCONTROLLER_H
@@ -18,7 +18,8 @@
 
 // Function Declarations
 extern void StabController(const double x[10], const double Kv[12],
-                           const double param[4], double u[3]);
+                           const double param[4], const double setpoint[3],
+                           double u[3]);
 
 #endif
 //

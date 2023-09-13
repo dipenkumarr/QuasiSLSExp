@@ -5,7 +5,7 @@
 // File: StabController.cpp
 //
 // MATLAB Coder version            : 5.6
-// C/C++ source code generated on  : 09-Sep-2023 20:42:42
+// C/C++ source code generated on  : 12-Sep-2023 17:59:47
 //
 
 // Include Files
@@ -71,11 +71,13 @@ static double rt_powd_snf(double u0, double u1)
 // Arguments    : const double x[10]
 //                const double Kv[12]
 //                const double param[4]
+//                const double setpoint[3]
 //                double u[3]
 // Return Type  : void
 //
 void StabController(const double x[10], const double Kv[12],
-                    const double param[4], double u[3])
+                    const double param[4], const double setpoint[3],
+                    double u[3])
 {
   double Ts1_idx_1;
   double Ts1_idx_1_tmp;
@@ -110,7 +112,8 @@ void StabController(const double x[10], const double Kv[12],
   Ts1_idx_1 = (x[7] - b_Ts1_idx_1_tmp * b_Ts1_tmp * Ts1_tmp_tmp) -
               Ts1_idx_1_tmp * b_Ts1_tmp_tmp * Ts1_tmp;
   n3_tmp = param[2] * b_Ts1_tmp_tmp;
-  n3 = -Kv[0] * Ts1_idx_1 - (x[2] + n3_tmp * Ts1_tmp_tmp) * Kv[3];
+  n3 = -Kv[0] * Ts1_idx_1 -
+       Kv[3] * ((x[2] + n3_tmp * Ts1_tmp_tmp) - setpoint[2]);
   n3p = -Kv[0] * n3 - Ts1_idx_1 * Kv[3];
   n3pp = -Kv[0] * n3p - Kv[3] * n3;
   Ts1_idx_1 = param[3] - n3;
@@ -124,14 +127,14 @@ void StabController(const double x[10], const double Kv[12],
              n1_tmp / b_n1_tmp) -
         -Ts1_tmp * Ts1_idx_1 / Ts1_tmp_tmp / b_Ts1_tmp_tmp * Kv[4]) -
        (x[5] + Ts1_idx_1_tmp * Ts1_tmp_tmp) * Kv[7]) -
-      (x[0] + param[2] * Ts1_tmp) * Kv[10];
+      Kv[10] * ((x[0] + param[2] * Ts1_tmp) - setpoint[0]);
   n2 = ((-Kv[2] *
              ((-n3p * b_Ts1_tmp * b_Ts1_tmp_tmp + x[8] * Ts1_idx_1) / n1_tmp) -
          Kv[5] * (b_Ts1_tmp * Ts1_idx_1 / b_Ts1_tmp_tmp)) -
         ((x[6] - b_Ts1_idx_1_tmp * b_Ts1_tmp_tmp * Ts1_tmp_tmp) +
          Ts1_idx_1_tmp * b_Ts1_tmp * Ts1_tmp) *
             Kv[8]) -
-       (x[1] - param[2] * b_Ts1_tmp * Ts1_tmp_tmp) * Kv[11];
+       Kv[11] * ((x[1] - param[2] * b_Ts1_tmp * Ts1_tmp_tmp) - setpoint[1]);
   a_tmp = -param[3] + n3;
   u_tmp = x[8] * x[8];
   b_u_tmp = rt_powd_snf(Ts1_tmp_tmp, 3.0);
@@ -145,27 +148,28 @@ void StabController(const double x[10], const double Kv[12],
              Ts1_tmp_tmp) +
         a_tmp * a_tmp * d_u_tmp) *
            Ts1_tmp +
-       2.0 * param[2] * b_n1_tmp *
+       2.0 * param[2] * param[0] *
            (-b_n1_tmp * n1_tmp * n1 / 2.0 +
             (b_Ts1_tmp_tmp * n3p + c_n1_tmp * a_tmp) * x[9]) *
-           param[0]) /
+           b_n1_tmp) /
       a_tmp / Ts1_tmp_tmp / b_Ts1_tmp_tmp;
   c_n1_tmp = rt_powd_snf(Ts1_tmp_tmp, 4.0);
+  b_u_tmp *= param[2];
   n3_tmp = rt_powd_snf(b_Ts1_tmp_tmp, 3.0);
   u_tmp_tmp = 0.66666666666666663 * u_tmp;
   f_u_tmp = c_u_tmp + u_tmp_tmp;
   Ts1_idx_1 = Ts1_idx_1_tmp * x[8] * Ts1_tmp;
   u[1] =
-      ((((-param[2] * b_Ts1_tmp_tmp *
+      ((((-b_Ts1_tmp_tmp * param[2] * param[0] *
               (((n3_tmp * n2 + n1_tmp * b_Ts1_tmp * n3pp) -
                 n2 * b_Ts1_tmp_tmp) +
                u_tmp * b_Ts1_tmp * a_tmp) *
-              param[0] * c_n1_tmp -
-          param[2] * n1_tmp * b_u_tmp * Ts1_tmp * b_Ts1_tmp * param[0] * n1) -
-         3.0 * param[2] * b_Ts1_tmp_tmp *
-             ((0.66666666666666663 * n3p * x[8] + n2 / 3.0) * b_Ts1_tmp_tmp +
-              a_tmp * b_Ts1_tmp * f_u_tmp) *
-             param[0] * b_n1_tmp) +
+              c_n1_tmp -
+          b_u_tmp * n1_tmp * Ts1_tmp * b_Ts1_tmp * param[0] * n1) -
+         3.0 * b_Ts1_tmp_tmp * param[2] * param[0] *
+             ((0.66666666666666663 * x[8] * n3p + n2 / 3.0) * b_Ts1_tmp_tmp +
+              f_u_tmp * b_Ts1_tmp * a_tmp) *
+             b_n1_tmp) +
         ((-4.0 * param[2] * x[9] * x[8] * Ts1_tmp * param[0] * a_tmp * n1_tmp +
           2.0 * param[2] * x[9] * Ts1_tmp * b_Ts1_tmp_tmp * b_Ts1_tmp *
               param[0] * n3p) +
@@ -176,23 +180,23 @@ void StabController(const double x[10], const double Kv[12],
            a_tmp) /
       a_tmp / Ts1_tmp_tmp / b_Ts1_tmp_tmp;
   u[2] =
-      ((((param[2] * rt_powd_snf(b_Ts1_tmp_tmp, 4.0) * c_n1_tmp * param[0] *
+      ((((param[2] * c_n1_tmp * rt_powd_snf(b_Ts1_tmp_tmp, 4.0) * param[0] *
               n3pp -
-          param[2] * b_u_tmp * param[0] *
-              (Ts1_tmp_tmp * b_Ts1_tmp * n2 - Ts1_tmp * n1) * n3_tmp) +
-         3.0 * param[2] *
+          b_u_tmp * param[0] * (Ts1_tmp_tmp * b_Ts1_tmp * n2 - Ts1_tmp * n1) *
+              n3_tmp) +
+         3.0 *
              (((e_u_tmp * c_n1_tmp / 3.0 +
                 ((f_u_tmp * n3 + (-c_u_tmp - u_tmp_tmp) * param[3]) -
                  n3pp / 3.0) *
                     b_n1_tmp) -
                0.66666666666666663 * x[9] * Ts1_tmp_tmp * Ts1_tmp * n3p) -
               0.66666666666666663 * c_u_tmp * a_tmp) *
-             param[0] * n1_tmp) -
-        4.0 * Ts1_tmp_tmp *
+             param[2] * param[0] * n1_tmp) -
+        4.0 *
             (b_Ts1_idx_1_tmp * Ts1_tmp_tmp * b_Ts1_tmp * param[0] * n3p / 2.0 +
-             a_tmp *
-                 (Ts1_idx_1 * b_Ts1_tmp * param[0] - d_u_tmp * a_tmp / 4.0)) *
-            b_Ts1_tmp_tmp) -
+             (Ts1_idx_1 * b_Ts1_tmp * param[0] - d_u_tmp * a_tmp / 4.0) *
+                 a_tmp) *
+            Ts1_tmp_tmp * b_Ts1_tmp_tmp) -
        2.0 * param[2] * u_tmp * b_n1_tmp * param[0] * a_tmp) /
       a_tmp / Ts1_tmp_tmp / b_Ts1_tmp_tmp;
 }
