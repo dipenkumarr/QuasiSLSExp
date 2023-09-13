@@ -9,7 +9,7 @@
 #include <offboardholy/PTStates.h>
 #include <mavros_msgs/Thrust.h>
 #include <mavros_msgs/AttitudeTarget.h>
-#include <gazebo_msgs/LinkStates.h>
+// #include <gazebo_msgs/LinkStates.h>
 #include <tf2_ros/static_transform_broadcaster.h>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
@@ -22,7 +22,6 @@
 #include <cstdlib>
 # include <iostream>
 
-void gazebo_state_cb(const gazebo_msgs::LinkStates::ConstPtr& msg);
 void PT_state_pub(ros::Publisher &sls_state_pub);
 void force_attitude_convert(double controller_output[3], mavros_msgs::AttitudeTarget &attitude);
 
@@ -181,10 +180,11 @@ int main(int argc, char **argv)
             break;
 
         case 1: // setpoint position control
-            pose.header.stamp = ros::Time::now();
+            attitude.header.stamp = ros::Time::now();
             StabController(dv, Kv12, Param, Setpoint, controller_output);
             force_attitude_convert(controller_output, attitude);
             attitude_setpoint_pub.publish(attitude);
+            
             distance = std::pow((current_local_pos.pose.position.x - Setpoint[0]),2) 
             + std::pow((current_local_pos.pose.position.y - Setpoint[1]),2)
             + std::pow((current_local_pos.pose.position.z - (-Setpoint[2]+0.7)),2);
