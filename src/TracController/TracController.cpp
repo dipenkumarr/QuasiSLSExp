@@ -122,7 +122,7 @@ void TracController(const double x[10], const double Kv[12],
            0.19634954084936207 * b_yr_tmp;
   b_n3_tmp = param[2] * b_Ts1_tmp_tmp;
   n3 = (yr_idx_12 - Kv[0] * n3_tmp) -
-       Kv[3] * ((x[2] + b_n3_tmp * Ts1_tmp_tmp) - (0.5 * yr_tmp - 1.0));
+       Kv[3] * ((x[2] + b_n3_tmp * Ts1_tmp_tmp) - (0.5 * yr_tmp - 0.6));
   yr_idx_12 = n3 - yr_idx_12;
   n3p = (yr_idx_13 - Kv[0] * yr_idx_12) - Kv[3] * n3_tmp;
   n3pp = (0.011890758182861623 * yr_tmp - Kv[0] * (n3p - yr_idx_13)) -

@@ -95,7 +95,7 @@ int main(int argc, char **argv)
     pose.header.frame_id = "map";
     pose.pose.position.x = 0;
     pose.pose.position.y = 0;
-    pose.pose.position.z = 1;
+    pose.pose.position.z = 1.1;
     pose.pose.orientation.x = 0;
     pose.pose.orientation.y = 0;
     pose.pose.orientation.z = 0;
@@ -115,8 +115,8 @@ int main(int argc, char **argv)
     for(int i = 100; ros::ok() && i > 0; --i){
         pose.header.stamp = ros::Time::now();
         local_pos_pub.publish(pose);
-        attitude.header.stamp = ros::Time::now();
-        attitude_setpoint_pub.publish(attitude);
+        // attitude.header.stamp = ros::Time::now();
+        // attitude_setpoint_pub.publish(attitude);
         ros::spinOnce();
         rate.sleep();
     }
@@ -140,9 +140,11 @@ int main(int argc, char **argv)
     while(ros::ok()){
         double dv[10] = {};
         double controller_output[3] = {};
-        double Kv12[12] = {2.2361,    3.1623, 3.1623,   3.0777,    8.4827,    8.4827,  0,    9.7962,    9.7962,  0,    5.4399,    5.4399};
-        double Param[4] = {1.5, 0.1, 0.7, 9.8};
-        double Setpoint[3] = {0, 0, -0.6};
+        // double Kv12[12] = {2.2361,    3.1623, 3.1623,   3.0777,    8.4827,    8.4827,  0,    9.7962,    9.7962,  0,    5.4399,    5.4399};
+        double Kv12[12] = {2.2361,    3.1623, 3.1623,   3.0777,    8.4827,    8.4827,  0,    18.7962,    18.7962,  0,    17.4399,    17.4399};
+        // double Kv12[12] = {3.0777,    5,  5,   2.2361,   6,    6,  0,     4,     4,  0,    3.1623,    3.1623};
+        double Param[4] = {1.4, 0.08, 0.75, 9.8};
+        double Setpoint[3] = {0, 0, -0.3};
         for (int i=0;i<10; i++){
           dv[i] = PTState.PT_states[i];
           // ROS_INFO_STREAM( "dv[i]: "<< i << " : " << dv[i] << "\n");
@@ -172,7 +174,7 @@ int main(int argc, char **argv)
             distance = std::pow((current_local_pos.pose.position.x - pose.pose.position.x),2) 
             + std::pow((current_local_pos.pose.position.y - pose.pose.position.y),2)
             + std::pow((current_local_pos.pose.position.z - pose.pose.position.z),2);
-            if(ros::Time::now() - last_request > ros::Duration(10.0) && distance < 0.1){
+            if(ros::Time::now() - last_request > ros::Duration(10.0) && distance < 0.2){
                 stage += 1;
                 last_request = ros::Time::now();
                 ROS_INFO("Takeoff finished and switch to position setpoint control mode");
@@ -186,16 +188,91 @@ int main(int argc, char **argv)
             attitude_setpoint_pub.publish(attitude);
             
             distance = std::pow((current_local_pos.pose.position.x - Setpoint[0]),2) 
-            + std::pow((current_local_pos.pose.position.y - Setpoint[1]),2)
-            + std::pow((current_local_pos.pose.position.z - (-Setpoint[2]+0.7)),2);
-            if(ros::Time::now() - last_request > ros::Duration(10.0) && distance < 0.2){
+            + std::pow((current_local_pos.pose.position.y - (-Setpoint[1])),2)
+            + std::pow((current_local_pos.pose.position.z - (-Setpoint[2]+0.95)),2);
+            // ROS_INFO_STREAM("Distance: " << distance);
+            if(ros::Time::now() - last_request > ros::Duration(15.0) && distance < 0.2){
                 stage += 1;
-                ROS_INFO("Achieve position setpoint and land");
+                ROS_INFO("Achieve position setpoint and switch to Setpoint 1");
                 last_request = ros::Time::now();
             }
             break;
 
-        case 2: // land
+        case 2: // setpoint position control
+            Setpoint[0] = 1;
+            Setpoint[1] = 0.5;
+            Setpoint[2] = -0.6;
+            StabController(dv, Kv12, Param, Setpoint, controller_output);
+            force_attitude_convert(controller_output, attitude);
+            attitude.header.stamp = ros::Time::now();
+            attitude_setpoint_pub.publish(attitude);
+            
+            distance = std::pow((current_local_pos.pose.position.x - Setpoint[0]),2) 
+            + std::pow((current_local_pos.pose.position.y - (-Setpoint[1])),2)
+            + std::pow((current_local_pos.pose.position.z - (-Setpoint[2]+0.95)),2);
+            // ROS_INFO_STREAM(" X: " << current_local_pos.pose.position.x << " Y: " << current_local_pos.pose.position.y << " Z: " << current_local_pos.pose.position.z);
+            ROS_INFO_STREAM("Distance: " << distance);
+            if(ros::Time::now() - last_request > ros::Duration(15.0) && distance < 0.2){
+                stage += 1;
+                ROS_INFO("Achieve position setpoint and switch to Setpoint 2");
+                last_request = ros::Time::now();
+            }
+            break;
+        
+        case 3: // setpoint position control
+            Setpoint[0] = -1;
+            Setpoint[1] = 0;
+            Setpoint[2] = -0.3;
+            StabController(dv, Kv12, Param, Setpoint, controller_output);
+            force_attitude_convert(controller_output, attitude);
+            attitude.header.stamp = ros::Time::now();
+            attitude_setpoint_pub.publish(attitude);
+            
+            distance = std::pow((current_local_pos.pose.position.x - Setpoint[0]),2) 
+            + std::pow((current_local_pos.pose.position.y - (-Setpoint[1])),2)
+            + std::pow((current_local_pos.pose.position.z - (-Setpoint[2]+0.95)),2);
+            ROS_INFO_STREAM("Distance: " << distance);
+            if(ros::Time::now() - last_request > ros::Duration(15.0) && distance < 0.2){
+                stage += 1;
+                ROS_INFO("Achieve position setpoint and switch to Setpoint 3");
+                last_request = ros::Time::now();
+            }
+            break;
+
+        case 4: // setpoint position control
+            Setpoint[0] = 0;
+            Setpoint[1] = 0;
+            Setpoint[2] = -0.3;
+            StabController(dv, Kv12, Param, Setpoint, controller_output);
+            force_attitude_convert(controller_output, attitude);
+            attitude.header.stamp = ros::Time::now();
+            attitude_setpoint_pub.publish(attitude);
+            
+            distance = std::pow((current_local_pos.pose.position.x - Setpoint[0]),2) 
+            + std::pow((current_local_pos.pose.position.y - (-Setpoint[1])),2)
+            + std::pow((current_local_pos.pose.position.z - (-Setpoint[2]+0.95)),2);
+            ROS_INFO_STREAM("Distance: " << distance);
+            if(ros::Time::now() - last_request > ros::Duration(15.0) && distance < 0.2){
+                stage += 1;
+                ROS_INFO("Achieve position setpoint and switch to Trajectory Tracking");
+                last_request = ros::Time::now();
+            }
+            break;
+        
+        case 5: //Trajectory tracking
+            attitude.header.stamp = ros::Time::now();
+            TracController(dv, Kv12, Param, ros::Time::now().toSec() - last_request.toSec(), controller_output);
+            force_attitude_convert(controller_output, attitude);
+            attitude_setpoint_pub.publish(attitude);
+            if(ros::Time::now() - last_request > ros::Duration(32.0)){
+                stage += 1;
+                ROS_INFO("Finish Trajactory Tracking and land");
+                last_request = ros::Time::now();
+            }
+            break;
+
+
+        case 6: // land
             pose.header.stamp = ros::Time::now();
             pose.header.frame_id = "map";
             pose.pose.position.x = 0;
@@ -205,29 +282,31 @@ int main(int argc, char **argv)
             distance = std::pow((current_local_pos.pose.position.x - pose.pose.position.x),2) 
             + std::pow((current_local_pos.pose.position.y - pose.pose.position.y),2)
             + std::pow((current_local_pos.pose.position.z - pose.pose.position.z),2);
-            if(ros::Time::now() - last_request > ros::Duration(5.0) && distance < 0.1){
-                pose.header.stamp = ros::Time::now();
-                pose.header.frame_id = "map";
-                pose.pose.position.x = -0.5;
-                pose.pose.position.y = 0;
-                pose.pose.position.z = 0.5;
-                local_pos_pub.publish(pose);
-                distance = std::pow((current_local_pos.pose.position.x - pose.pose.position.x),2) 
-                + std::pow((current_local_pos.pose.position.y - pose.pose.position.y),2)
-                + std::pow((current_local_pos.pose.position.z - pose.pose.position.z),2);
-                if(ros::Time::now() - last_request > ros::Duration(10.0) && distance < 0.1){
-                    if( set_mode_client.call(land_mode) && land_mode.response.mode_sent){
+            if(ros::Time::now() - last_request > ros::Duration(5.0)){
+            // if(ros::Time::now() - last_request > ros::Duration(5.0) && distance < 0.2){
+
+                // pose.header.stamp = ros::Time::now();
+                // pose.header.frame_id = "map";
+                // pose.pose.position.x = -0.5;
+                // pose.pose.position.y = 0;
+                // pose.pose.position.z = 0.5;
+                // local_pos_pub.publish(pose);
+                // distance = std::pow((current_local_pos.pose.position.x - pose.pose.position.x),2) 
+                // + std::pow((current_local_pos.pose.position.y - pose.pose.position.y),2)
+                // + std::pow((current_local_pos.pose.position.z - pose.pose.position.z),2);
+                // if(ros::Time::now() - last_request > ros::Duration(10.0) && distance < 0.1){
+                if( set_mode_client.call(land_mode) && land_mode.response.mode_sent){
                     stage += 1;
                     ROS_INFO("Land finished");
-                    }
+                    // }
                 }
             }
             break;
         
         default:
             if( set_mode_client.call(land_mode) && land_mode.response.mode_sent){
-                arm_cmd.request.value = false;
-                arming_client.call(arm_cmd);
+                // arm_cmd.request.value = false;
+                // arming_client.call(arm_cmd);
                 // ROS_INFO("Land enabled"); 
             }
             break;
@@ -301,7 +380,7 @@ void force_attitude_convert(double controller_output[3], mavros_msgs::AttitudeTa
   attitude.orientation.w = attitude_target_q.getW();
 
   // attitude.thrust = (thrust-16.67122)/20 + 0.8168;
-  attitude.thrust = (thrust-16.67122)/20 + 0.8168;
+  attitude.thrust = (thrust-14.504)/8 + 0.78;
 
-  // ROS_INFO_STREAM("Force: " << controller_output[0]<< "   " << controller_output[1]<< "   " << controller_output[2] << " orientation " << roll << "  " << pitch);
+//   ROS_INFO_STREAM("Force: " << controller_output[0]<< "   " << controller_output[1]<< "   " << controller_output[2] << " orientation " << roll << "  " << pitch);
 }

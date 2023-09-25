@@ -143,12 +143,11 @@ int main(int argc, char **argv)
         PT_state_pub(sls_state_pub);
 
 
-
         double dv[10] = {};
         double controller_output[3] = {};
         double Kv12[12] = {2.2361,    3.1623, 3.1623,   3.0777,    8.4827,    8.4827,  0,    9.7962,    9.7962,  0,    5.4399,    5.4399};
-        double Param[4] = {1.5, 0.1, 0.7, 9.8};
-        double Setpoint[3] = {0, 0, -0.5};
+        double Param[4] = {1.4, 0.08, 0.7, 9.8};
+        double Setpoint[3] = {0, 0, -0.3};
         for (int i=0;i<10; i++){
           dv[i] = PTState.PT_states[i];
           // ROS_INFO_STREAM( "dv[i]: "<< i << " : " << dv[i] << "\n");
@@ -195,6 +194,8 @@ void PT_state_pub(ros::Publisher &sls_state_pub){
     // PTState.PT_states[7] = sls_state1.vz;
     PTState.PT_states[8] = sls_state1.gamma_alpha;
     PTState.PT_states[9] = sls_state1.gamma_beta;
+    // PTState.PT_states[8] = 0;
+    // PTState.PT_states[9] = 0;
     sls_state_pub.publish(PTState);
 }
 
@@ -225,9 +226,10 @@ void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
     sls_state1.alpha = penangle.alpha;
     sls_state1.beta = penangle.beta;
 
+    double L = 1;
     double g_alpha, g_beta;
-    g_beta = ((loadtwist.linear.x) - (quadtwist.linear.x))/std::cos(sls_state1.beta);
-    g_alpha = ((-loadtwist.linear.y) - (-quadtwist.linear.y) - std::sin(sls_state1.alpha)*std::sin(sls_state1.beta)*g_beta)/(-std::cos(sls_state1.alpha)*std::cos(sls_state1.beta));
+    g_beta = ((loadtwist.linear.x) - (quadtwist.linear.x))/(L*std::cos(sls_state1.beta));
+    g_alpha = ((-loadtwist.linear.y) - (-quadtwist.linear.y) - std::sin(sls_state1.alpha)*std::sin(sls_state1.beta)*g_beta*L)/(-std::cos(sls_state1.alpha)*std::cos(sls_state1.beta)*L);
 
     sls_state1.gamma_alpha = g_alpha;
     sls_state1.gamma_beta = g_beta;
@@ -236,7 +238,11 @@ void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
 
 PendulumAngles ToPenAngles(double Lx,double Ly,double Lz) { //x=base.x
     PendulumAngles angles;
+    // double L_cal = sqrt(Lx*Lx + Ly*Ly + Lz*Lz);
+    // ROS_INFO_STREAM("Pendulum Length: " << L_cal);
     double L = 1;
+
+    // ROS_INFO_STREAM(L);
 
     // beta (y-axis rotation)
     double sinbeta = Lx/L;
@@ -269,9 +275,9 @@ void force_attitude_convert(double controller_output[3], mavros_msgs::AttitudeTa
   attitude.orientation.w = attitude_target_q.getW();
 
   // attitude.thrust = (thrust-16.67122)/20 + 0.8168;
-  attitude.thrust = (thrust-15.68122)/20 + 0.8168;
+  attitude.thrust = (thrust-14.504)/8 + 0.78;
 
-//   ROS_INFO_STREAM("Force: " << controller_output[0]<< "   " << controller_output[1]<< "   " << controller_output[2] << " orientation " << roll << "  " << pitch);
+//   ROS_INFO_STREAM("Force: " << controller_output[0]<< "   " << controller_output[1]<< "   " << controller_output[2] << " orientation " << roll << "  " << pitch << " Thrust: " << thrust << " X position: " << loadpose.position.x << " Y position: " << loadpose.position.y <<" Z position: " << loadpose.position.z);
 }
 
 
