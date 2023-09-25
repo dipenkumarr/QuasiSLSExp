@@ -384,3 +384,4 @@ void force_attitude_convert(double controller_output[3], mavros_msgs::AttitudeTa
 
 //   ROS_INFO_STREAM("Force: " << controller_output[0]<< "   " << controller_output[1]<< "   " << controller_output[2] << " orientation " << roll << "  " << pitch);
 }
+
