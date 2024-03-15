@@ -11,8 +11,6 @@ The code runs real-world experiments with a multirotor UAV running the [PX4 auto
 
 2. The corresponding Matlab and Maple file: [MatlabMapleCode](./MatlabMapleCode)
 
-3. SLS Model SDF File: [iris_pendulum](./ancl_sls/iris_pendulum/)
-
 ## Usage
 
 1. Using QgroundControl to take off.
