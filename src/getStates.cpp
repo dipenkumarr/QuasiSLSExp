@@ -1,3 +1,11 @@
+/* 
+About this file: 
+getStates.cpp code mainly deals with the communication with various topics through subscribing, 
+processing the data and then publishing the processed state data to other topics.
+*/
+
+
+/* Includes necessary headers foor ROS, geometry_msgs, mavros_msgs, and other custom headers. */
 #include <ros/ros.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/TwistStamped.h>
@@ -16,6 +24,7 @@
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/transform_datatypes.h>
 
+/* Includes the custom headers for the control functions. */
 #include <StabController.h>
 #include <TracController.h>
 #include <rtwtypes.h>
@@ -24,52 +33,66 @@
 # include <iostream>
 
 // void gazebo_state_cb(const gazebo_msgs::LinkStates::ConstPtr& msg);
+
+/* References to the functions defined below */
 void PT_state_pub(ros::Publisher &sls_state_pub);
 void force_attitude_convert(double controller_output[3], mavros_msgs::AttitudeTarget &attitude);
 void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg);
 
+
+/* Global variable for position, velocity and states */
 geometry_msgs::PoseStamped current_local_pos;
 
 geometry_msgs::TwistStamped load_vel;
 
 geometry_msgs::Pose quadpose;
 geometry_msgs::Pose loadpose;
+
 geometry_msgs::Twist quadtwist;
 geometry_msgs::Twist loadtwist;
 
 offboardholy::PTStates PTState;
 
+/* Template Function to limit the value between min and max */
 template<typename T>
 T saturate(T val, T min, T max) {
     return std::min(std::max(val, min), max);
 }
 
+/* Template Function to calculate the sigmoid function */
 template<typename T>
 T sigmoidf(T x) {
     return x/(1+std::abs(x));
 }
 
+
+/* Structure to store Pendulum angles -- alpha (roll) and beta (pitch) */
 struct PendulumAngles {
     double alpha, beta; // roll(alpha) pitch(beta) yaw
-}penangle,penangle2;
+} penangle,penangle2;
+
 PendulumAngles ToPenAngles(double Lx,double Ly,double Lz);
 
+/* Callback function to update the current state of drone */
 mavros_msgs::State current_state;
 void state_cb(const mavros_msgs::State::ConstPtr& msg){
     current_state = *msg;
-}
+}\
 
+/* Callback function to update the current velocity of drone */
 geometry_msgs::TwistStamped current_local_vel;
 void vel_cb(const geometry_msgs::TwistStamped::ConstPtr& msg)
 {
     current_local_vel = *msg;
 }
 
+/* Structure to store the states of the slung load system */
 struct sls_state {
     double x, y, z, alpha, beta, vx, vy, vz, gamma_alpha, gamma_beta;
-}sls_state1;
+} sls_state1;
 
 
+/* Callback function to update the position of the load */
 geometry_msgs::PoseStamped load_pose, load_pose0;
 double diff_time; 
 void loadpose_cb(const geometry_msgs::TransformStamped::ConstPtr& msg){
@@ -84,6 +107,7 @@ void loadpose_cb(const geometry_msgs::TransformStamped::ConstPtr& msg){
     
 }
 
+/* Callback function to calculate the velocity of the load based on change in postion over time. */
 void timerCallback(const ros::TimerEvent&){
     load_vel.header.frame_id = "map";
     // diff_time = ros::Time::now().toSec() - load_pose.header.stamp.toSec();
@@ -175,7 +199,7 @@ int main(int argc, char **argv)
     return 0;
 }
 
-
+/*Function to publish the states of the slung load system*/
 void PT_state_pub(ros::Publisher &sls_state_pub){
     PTState.header.stamp = ros::Time::now();
     // PTState.PT_states[0] = sls_state1.x;
@@ -259,6 +283,7 @@ PendulumAngles ToPenAngles(double Lx,double Ly,double Lz) { //x=base.x
     return angles;
 }
 
+/* Function to convert the force output from the controller to attitude target for drone.*/
 void force_attitude_convert(double controller_output[3], mavros_msgs::AttitudeTarget &attitude){
   attitude.header.stamp = ros::Time::now();
   double roll,pitch,yaw, thrust;
