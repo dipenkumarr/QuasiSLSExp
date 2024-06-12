@@ -130,6 +130,8 @@ int main(int argc, char **argv)
 {
     /* Initialise ROS Node */
     ros::init(argc, argv, "listener");
+
+    /* NodeHandle - Main access point for communications with ROS*/
     ros::NodeHandle nh;
 
     /* Subscribe to the topics for the state, postion and velocity of the drone and the load */
@@ -137,21 +139,24 @@ int main(int argc, char **argv)
     ros::Subscriber local_pos_sub = nh.subscribe<geometry_msgs::PoseStamped>("mavros/local_position/pose", 10, pose_cb);
     ros::Subscriber local_vel_sub = nh.subscribe<geometry_msgs::TwistStamped>("mavros/local_position/velocity_local", 10, vel_cb);
     // ros::Subscriber gazebo_state_sub = nh.subscribe<gazebo_msgs::LinkStates>("gazebo/link_states", 10, gazebo_state_cb);
+    /* Subscribe to vicon system for load position to help in tracking */
     ros::Subscriber load_vicon_sub = nh.subscribe<geometry_msgs::TransformStamped>("/vicon/Load4Ball/Load4Ball", 10, loadpose_cb);
 
     /* Publish the states of the slung load system and the target attitude for the drone */
     ros::Publisher sls_state_pub = nh.advertise<offboardholy::PTStates>("/offboardholy/sls_state", 10);
     ros::Publisher target_attitude_pub = nh.advertise<mavros_msgs::AttitudeTarget>("/offboardholy/target_attitude", 10);
 
-    /* Service clients to arm and set mode of the drone */
+    /* Service clients to arm/disarm and set mode of the drone */
     ros::ServiceClient arming_client = nh.serviceClient<mavros_msgs::CommandBool>("mavros/cmd/arming");
     ros::ServiceClient set_mode_client = nh.serviceClient<mavros_msgs::SetMode>("mavros/set_mode");
 
+    /* A timer to call function (timeCallback) at a regular intervals */
     ros::Timer timer = nh.createTimer(ros::Duration(0.05), timerCallback);
 
     // the setpoint publishing rate MUST be faster than 2Hz
     ros::Rate rate(50.0);
 
+    /* Initialising the drone's attitude (orientation and thrust) to some default values */
     mavros_msgs::AttitudeTarget attitude;
     attitude.header.stamp = ros::Time::now();
     attitude.header.frame_id = "map";
@@ -161,31 +166,42 @@ int main(int argc, char **argv)
     attitude.orientation.w = 0;
     attitude.thrust = 0.2;
 
+    /* Storing the time of the last request  */
     ros::Time last_request = ros::Time::now();
 
+    /* Initialising some variables for drone controlling*/
     double distance = 0;
     double t0 = 0;
     int stage = 0;
 
+    /* Main loop - Runs until ROS is running or any node fails */
     while (ros::ok())
     {
+        /* Publish the states of the slung load system */
         PT_state_pub(sls_state_pub);
 
+        /* Initialised some arrays for controller data */
         double dv[10] = {};
         double controller_output[3] = {};
         double Kv12[12] = {2.2361, 3.1623, 3.1623, 3.0777, 8.4827, 8.4827, 0, 9.7962, 9.7962, 0, 5.4399, 5.4399};
         double Param[4] = {1.4, 0.08, 0.7, 9.8};
         double Setpoint[3] = {0, 0, -0.3};
+
         for (int i = 0; i < 10; i++)
         {
             dv[i] = PTState.PT_states[i];
             // ROS_INFO_STREAM( "dv[i]: "<< i << " : " << dv[i] << "\n");
         }
+
+        /* Calling Stabilisation controller with the following argumets to calculate the control output */
         StabController(dv, Kv12, Param, Setpoint, controller_output);
+
+        /* Converting the control output from the controller to attitude target for drone */
         force_attitude_convert(controller_output, attitude);
         attitude.header.stamp = ros::Time::now();
         target_attitude_pub.publish(attitude);
 
+        /* If the current mode is not OFFBOARD -> Update the start time */
         if (current_state.mode != "OFFBOARD")
         {
             t0 = ros::Time::now().toSec();
@@ -197,6 +213,7 @@ int main(int argc, char **argv)
         // ROS_INFO_STREAM("gazebo position: " << quadpose.position.x  << "  " << quadpose.position.y << "  " << quadpose.position.z );
         // ROS_INFO_STREAM("px4 position: " << current_local_pos.pose.position.x << "  " << current_local_pos.pose.position.y << "  " << current_local_pos.pose.position.z);
 
+        /* SpinOnce to handle all the callbacks */
         ros::spinOnce();
         rate.sleep();
     }
