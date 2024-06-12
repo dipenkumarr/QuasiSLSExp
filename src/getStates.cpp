@@ -221,7 +221,12 @@ int main(int argc, char **argv)
     return 0;
 }
 
-/*Function to publish the states of the slung load system*/
+/*
+Function to publish the states of the slung load system to the ROS topics
+
+It updates the PTState object with the current position, velocity and angles of the sls (pendulum) of the drone and the load.
+It then publishes the PTState object to the particular ROS topic.
+*/
 void PT_state_pub(ros::Publisher &sls_state_pub)
 {
     PTState.header.stamp = ros::Time::now();
@@ -246,34 +251,47 @@ void PT_state_pub(ros::Publisher &sls_state_pub)
     sls_state_pub.publish(PTState);
 }
 
+
+/* 
+Callback function to update the current state of drone 
+
+This function updates the current local position and velocity of the drone and the load, whenever a new pose message is received.
+It also calculates the angles of the load (sls) based on the position of the drone and the load.
+*/
 void pose_cb(const geometry_msgs::PoseStamped::ConstPtr &msg)
 {
     current_local_pos = *msg;
 
+    /* Update drone/quadrotor position */
     quadpose.position.x = current_local_pos.pose.position.x;
     quadpose.position.y = current_local_pos.pose.position.y;
     quadpose.position.z = current_local_pos.pose.position.z;
 
+    /* Update load position */
     loadpose.position.x = load_pose.pose.position.x;
     loadpose.position.y = load_pose.pose.position.y;
     loadpose.position.z = load_pose.pose.position.z;
 
+    /* Update drone/quadrotor velocity */
     quadtwist.linear.x = current_local_vel.twist.linear.x;
     quadtwist.linear.y = current_local_vel.twist.linear.y;
     quadtwist.linear.z = current_local_vel.twist.linear.z;
 
+    /* Update load velocity */
     loadtwist.linear.x = load_vel.twist.linear.x;
     loadtwist.linear.y = load_vel.twist.linear.y;
     loadtwist.linear.z = load_vel.twist.linear.z;
 
+    /* Calculate the relative position of load - x, y, z components of the load*/
     double Lx = (loadpose.position.x) - (quadpose.position.x);
     double Ly = (-loadpose.position.y) - (-quadpose.position.y);
     double Lz = (-loadpose.position.z) - (-quadpose.position.z);
+
     penangle = ToPenAngles(Lx, Ly, -Lz); // in the paper the definition of n3 are opposite to the Z axis of gazebo
     sls_state1.alpha = penangle.alpha;
     sls_state1.beta = penangle.beta;
 
-    double L = 1;
+    double L = 1;     // length of the pendulum
     double g_alpha, g_beta;
     g_beta = ((loadtwist.linear.x) - (quadtwist.linear.x)) / (L * std::cos(sls_state1.beta));
     g_alpha = ((-loadtwist.linear.y) - (-quadtwist.linear.y) - std::sin(sls_state1.alpha) * std::sin(sls_state1.beta) * g_beta * L) / (-std::cos(sls_state1.alpha) * std::cos(sls_state1.beta) * L);
@@ -282,6 +300,13 @@ void pose_cb(const geometry_msgs::PoseStamped::ConstPtr &msg)
     sls_state1.gamma_beta = g_beta;
 }
 
+
+/*
+Function that calculates the angles of the pendulum based on the position of the load.
+
+This function calculates the angles of the pendulum based on the relative position of the load and the length of the pendulum.
+It then returns the structure 'angles' which contain the calculated angles.
+*/
 PendulumAngles ToPenAngles(double Lx, double Ly, double Lz)
 { // x=base.x
     PendulumAngles angles;
@@ -306,11 +331,20 @@ PendulumAngles ToPenAngles(double Lx, double Ly, double Lz)
     return angles;
 }
 
-/* Function to convert the force output from the controller to attitude target for drone.*/
+/* 
+Function to convert the force output from the controller to attitude target for drone.
+
+This function converts the force output from the controller to the attitude commands (roll, pitch, yaw and thrust) for the drone.
+
+controller_output - contains the force output from the controller.
+attitude - reference to the attitude target for the drone to be updated.
+*/
 void force_attitude_convert(double controller_output[3], mavros_msgs::AttitudeTarget &attitude)
 {
     attitude.header.stamp = ros::Time::now();
+
     double roll, pitch, yaw, thrust;
+
     thrust = sqrt(controller_output[0] * controller_output[0] + controller_output[1] * controller_output[1] + controller_output[2] * controller_output[2]);
     yaw = 0;
     roll = std::asin(controller_output[1] / thrust);
@@ -318,6 +352,7 @@ void force_attitude_convert(double controller_output[3], mavros_msgs::AttitudeTa
 
     tf2::Quaternion attitude_target_q;
     attitude_target_q.setRPY(roll, pitch, yaw);
+
     attitude.orientation.x = attitude_target_q.getX();
     attitude.orientation.y = attitude_target_q.getY();
     attitude.orientation.z = attitude_target_q.getZ();
