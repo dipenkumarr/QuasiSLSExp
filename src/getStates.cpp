@@ -1,7 +1,7 @@
 /*
 About this file:
 getStates.cpp code mainly deals with the communication with various topics through subscribing,
-processing the data and then publishing the processed state data to other topics.
+processing the data and then publishing the processed data to other topics.
 */
 
 /* Includes necessary headers foor ROS, geometry_msgs, mavros_msgs, and other custom headers. */
@@ -27,18 +27,20 @@ processing the data and then publishing the processed state data to other topics
 #include <StabController.h>
 #include <TracController.h>
 #include <rtwtypes.h>
+
+/* Includes necessary headers for C++ standard library */
 #include <cstddef>
 #include <cstdlib>
 #include <iostream>
 
 // void gazebo_state_cb(const gazebo_msgs::LinkStates::ConstPtr& msg);
 
-/* References to the functions defined below */
+/* Declaring the functions defined below */
 void PT_state_pub(ros::Publisher &sls_state_pub);
 void force_attitude_convert(double controller_output[3], mavros_msgs::AttitudeTarget &attitude);
 void pose_cb(const geometry_msgs::PoseStamped::ConstPtr &msg);
 
-/* Global variable for position, velocity and states */
+/* Global variables for position, velocity and states */
 geometry_msgs::PoseStamped current_local_pos;
 
 geometry_msgs::TwistStamped load_vel;
@@ -51,7 +53,7 @@ geometry_msgs::Twist loadtwist;
 
 offboardholy::PTStates PTState;
 
-/* Template Function to limit the value between min and max */
+/* Template Function to limit the value between a certain range */
 template <typename T>
 T saturate(T val, T min, T max)
 {
@@ -71,7 +73,9 @@ struct PendulumAngles
     double alpha, beta; // roll(alpha) pitch(beta) yaw
 } penangle, penangle2;
 
+/* Declaring the function defined below */
 PendulumAngles ToPenAngles(double Lx, double Ly, double Lz);
+
 
 /* Callback function to update the current state of drone */
 mavros_msgs::State current_state;
@@ -93,7 +97,7 @@ struct sls_state
     double x, y, z, alpha, beta, vx, vy, vz, gamma_alpha, gamma_beta;
 } sls_state1;
 
-/* Callback function to update the position of the load */
+/* Callback function to update the variable 'load_pose' with current position and orientation of the load from the msg param */
 geometry_msgs::PoseStamped load_pose, load_pose0;
 double diff_time;
 void loadpose_cb(const geometry_msgs::TransformStamped::ConstPtr &msg)
@@ -108,7 +112,10 @@ void loadpose_cb(const geometry_msgs::TransformStamped::ConstPtr &msg)
     load_pose.pose.orientation = msg->transform.rotation;
 }
 
-/* Callback function to calculate the velocity of the load based on change in postion over time. */
+/* 
+Callback function to calculate the velocity of the load based on change in postion of the load over time. 
+It then updates the variable 'load_pose0' with the current position of the load.
+*/
 void timerCallback(const ros::TimerEvent &)
 {
     load_vel.header.frame_id = "map";
@@ -166,7 +173,7 @@ int main(int argc, char **argv)
     attitude.orientation.w = 0;
     attitude.thrust = 0.2;
 
-    /* Storing the time of the last request  */
+    /* Storing the time of the last request */
     ros::Time last_request = ros::Time::now();
 
     /* Initialising some variables for drone controlling*/
@@ -193,10 +200,10 @@ int main(int argc, char **argv)
             // ROS_INFO_STREAM( "dv[i]: "<< i << " : " << dv[i] << "\n");
         }
 
-        /* Calling Stabilisation controller with the following argumets to calculate the control output */
+        /* Calling Stabilisation controller with the following arguments */
         StabController(dv, Kv12, Param, Setpoint, controller_output);
 
-        /* Converting the control output from the controller to attitude target for drone */
+        /* Converting the control output from the controller to attitude target for drone adn publishing it */
         force_attitude_convert(controller_output, attitude);
         attitude.header.stamp = ros::Time::now();
         target_attitude_pub.publish(attitude);
@@ -213,7 +220,7 @@ int main(int argc, char **argv)
         // ROS_INFO_STREAM("gazebo position: " << quadpose.position.x  << "  " << quadpose.position.y << "  " << quadpose.position.z );
         // ROS_INFO_STREAM("px4 position: " << current_local_pos.pose.position.x << "  " << current_local_pos.pose.position.y << "  " << current_local_pos.pose.position.z);
 
-        /* SpinOnce to handle all the callbacks */
+        /* spinOnce to handle all the callbacks */
         ros::spinOnce();
         rate.sleep();
     }
@@ -222,10 +229,10 @@ int main(int argc, char **argv)
 }
 
 /*
-Function to publish the states of the slung load system to the ROS topics
+Function to publish the states of the drone system to the ROS topics
 
-It updates the PTState object with the current position, velocity and angles of the sls (pendulum) of the drone and the load.
-It then publishes the PTState object to the particular ROS topic.
+It updates the PTState.PT_states array with the current position, velocity and angles of the drone system.
+It then uses sls_state_pub publisher to publish the PTState message to the particular ROS topic.
 */
 void PT_state_pub(ros::Publisher &sls_state_pub)
 {
@@ -253,10 +260,11 @@ void PT_state_pub(ros::Publisher &sls_state_pub)
 
 
 /* 
-Callback function to update the current state of drone 
+Callback function to update the current state of drone and load based on the pose message received.
 
 This function updates the current local position and velocity of the drone and the load, whenever a new pose message is received.
-It also calculates the angles of the load (sls) based on the position of the drone and the load.
+It also calculates the angles of the load (sls) based on the relative position of the drone and the load.
+It then calculates the gamma_alpha and gamma_beta values based on the angles recieved from the ToPenAngles, velocities of both the drone and the load, the pendulum's length (L).
 */
 void pose_cb(const geometry_msgs::PoseStamped::ConstPtr &msg)
 {
@@ -287,12 +295,16 @@ void pose_cb(const geometry_msgs::PoseStamped::ConstPtr &msg)
     double Ly = (-loadpose.position.y) - (-quadpose.position.y);
     double Lz = (-loadpose.position.z) - (-quadpose.position.z);
 
+    /* Getting the angles of the pendulum based on the relative position of the load */
     penangle = ToPenAngles(Lx, Ly, -Lz); // in the paper the definition of n3 are opposite to the Z axis of gazebo
+
     sls_state1.alpha = penangle.alpha;
     sls_state1.beta = penangle.beta;
 
+    /* Calculate the gamma_alpha and gamma_beta values based on the angles recieved from the ToPenAngles, velocities of both the drone and the load, the pendulum's length (L). */
     double L = 1;     // length of the pendulum
     double g_alpha, g_beta;
+
     g_beta = ((loadtwist.linear.x) - (quadtwist.linear.x)) / (L * std::cos(sls_state1.beta));
     g_alpha = ((-loadtwist.linear.y) - (-quadtwist.linear.y) - std::sin(sls_state1.alpha) * std::sin(sls_state1.beta) * g_beta * L) / (-std::cos(sls_state1.alpha) * std::cos(sls_state1.beta) * L);
 
@@ -302,10 +314,10 @@ void pose_cb(const geometry_msgs::PoseStamped::ConstPtr &msg)
 
 
 /*
-Function that calculates the angles of the pendulum based on the position of the load.
+Function that calculates the angles of the pendulum based on the relative position of the load.
 
 This function calculates the angles of the pendulum based on the relative position of the load and the length of the pendulum.
-It then returns the structure 'angles' which contain the calculated angles.
+It then returns the structure 'angles' which contain the calculated angles (alpha and beta).
 */
 PendulumAngles ToPenAngles(double Lx, double Ly, double Lz)
 { // x=base.x
@@ -332,9 +344,7 @@ PendulumAngles ToPenAngles(double Lx, double Ly, double Lz)
 }
 
 /* 
-Function to convert the force output from the controller to attitude target for drone.
-
-This function converts the force output from the controller to the attitude commands (roll, pitch, yaw and thrust) for the drone.
+This function converts the force output from the controller to the attitude target/commands (roll, pitch, yaw and thrust) for the drone.
 
 controller_output - contains the force output from the controller.
 attitude - reference to the attitude target for the drone to be updated.
@@ -345,7 +355,7 @@ void force_attitude_convert(double controller_output[3], mavros_msgs::AttitudeTa
 
     double roll, pitch, yaw, thrust;
 
-    thrust = sqrt(controller_output[0] * controller_output[0] + controller_output[1] * controller_output[1] + controller_output[2] * controller_output[2]);
+    thrust = std::sqrt(controller_output[0] * controller_output[0] + controller_output[1] * controller_output[1] + controller_output[2] * controller_output[2]);
     yaw = 0;
     roll = std::asin(controller_output[1] / thrust);
     pitch = std::atan2(controller_output[0], -controller_output[2]);
@@ -363,6 +373,9 @@ void force_attitude_convert(double controller_output[3], mavros_msgs::AttitudeTa
 
     //   ROS_INFO_STREAM("Force: " << controller_output[0]<< "   " << controller_output[1]<< "   " << controller_output[2] << " orientation " << roll << "  " << pitch << " Thrust: " << thrust << " X position: " << loadpose.position.x << " Y position: " << loadpose.position.y <<" Z position: " << loadpose.position.z);
 }
+
+
+
 
 /////////////////////////////
 // void gazebo_state_cb(const gazebo_msgs::LinkStates::ConstPtr& msg){
