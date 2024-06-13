@@ -4,7 +4,7 @@ getStates.cpp code mainly deals with the communication with various topics throu
 processing the data and then publishing the processed data to other topics.
 */
 
-/* Includes necessary headers foor ROS, geometry_msgs, mavros_msgs, and other custom headers. */
+/* Includes necessary headers for ROS, geometry_msgs, mavros_msgs, and other custom headers. */
 #include <ros/ros.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/TwistStamped.h>
@@ -76,16 +76,15 @@ struct PendulumAngles
 /* Declaring the function defined below */
 PendulumAngles ToPenAngles(double Lx, double Ly, double Lz);
 
-
-/* Callback function to update the current state of drone */
 mavros_msgs::State current_state;
+/* Callback function to save the current state of the autopilot */
 void state_cb(const mavros_msgs::State::ConstPtr &msg)
 {
     current_state = *msg;
 }
 
-/* Callback function to update the current velocity of drone */
 geometry_msgs::TwistStamped current_local_vel;
+/* Callback function to save the current velocity of drone */
 void vel_cb(const geometry_msgs::TwistStamped::ConstPtr &msg)
 {
     current_local_vel = *msg;
@@ -97,9 +96,9 @@ struct sls_state
     double x, y, z, alpha, beta, vx, vy, vz, gamma_alpha, gamma_beta;
 } sls_state1;
 
-/* Callback function to update the variable 'load_pose' with current position and orientation of the load from the msg param */
 geometry_msgs::PoseStamped load_pose, load_pose0;
 double diff_time;
+/* Callback function to update the variable 'load_pose' with current position and orientation of the load from the msg param */
 void loadpose_cb(const geometry_msgs::TransformStamped::ConstPtr &msg)
 {
     load_pose.header.frame_id = "map";
@@ -112,8 +111,8 @@ void loadpose_cb(const geometry_msgs::TransformStamped::ConstPtr &msg)
     load_pose.pose.orientation = msg->transform.rotation;
 }
 
-/* 
-Callback function to calculate the velocity of the load based on change in postion of the load over time. 
+/*
+Callback function to calculate the velocity of the load based on change in postion of the load over time.
 It then updates the variable 'load_pose0' with the current position of the load.
 */
 void timerCallback(const ros::TimerEvent &)
@@ -258,8 +257,7 @@ void PT_state_pub(ros::Publisher &sls_state_pub)
     sls_state_pub.publish(PTState);
 }
 
-
-/* 
+/*
 Callback function to update the current state of drone and load based on the pose message received.
 
 This function updates the current local position and velocity of the drone and the load, whenever a new pose message is received.
@@ -302,7 +300,7 @@ void pose_cb(const geometry_msgs::PoseStamped::ConstPtr &msg)
     sls_state1.beta = penangle.beta;
 
     /* Calculate the gamma_alpha and gamma_beta values based on the angles recieved from the ToPenAngles, velocities of both the drone and the load, the pendulum's length (L). */
-    double L = 1;     // length of the pendulum
+    double L = 1; // length of the pendulum
     double g_alpha, g_beta;
 
     g_beta = ((loadtwist.linear.x) - (quadtwist.linear.x)) / (L * std::cos(sls_state1.beta));
@@ -311,7 +309,6 @@ void pose_cb(const geometry_msgs::PoseStamped::ConstPtr &msg)
     sls_state1.gamma_alpha = g_alpha;
     sls_state1.gamma_beta = g_beta;
 }
-
 
 /*
 Function that calculates the angles of the pendulum based on the relative position of the load.
@@ -343,7 +340,7 @@ PendulumAngles ToPenAngles(double Lx, double Ly, double Lz)
     return angles;
 }
 
-/* 
+/*
 This function converts the force output from the controller to the attitude target/commands (roll, pitch, yaw and thrust) for the drone.
 
 controller_output - contains the force output from the controller.
@@ -373,9 +370,6 @@ void force_attitude_convert(double controller_output[3], mavros_msgs::AttitudeTa
 
     //   ROS_INFO_STREAM("Force: " << controller_output[0]<< "   " << controller_output[1]<< "   " << controller_output[2] << " orientation " << roll << "  " << pitch << " Thrust: " << thrust << " X position: " << loadpose.position.x << " Y position: " << loadpose.position.y <<" Z position: " << loadpose.position.z);
 }
-
-
-
 
 /////////////////////////////
 // void gazebo_state_cb(const gazebo_msgs::LinkStates::ConstPtr& msg){
