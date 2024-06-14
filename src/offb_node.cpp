@@ -87,7 +87,7 @@ int main(int argc, char **argv)
     /* NodeHandle - Main access point for communications with ROS*/
     ros::NodeHandle nh;
 
-    /* Subscribe to the necessay topics */
+    /* Subscribe to the necessary topics */
     ros::Subscriber state_sub = nh.subscribe<mavros_msgs::State>("mavros/state", 10, state_cb);
     ros::Subscriber local_pos_sub = nh.subscribe<geometry_msgs::PoseStamped>("mavros/local_position/pose", 10, pose_cb);
     ros::Subscriber local_vel_sub = nh.subscribe<geometry_msgs::TwistStamped>("mavros/local_position/velocity_local", 10, vel_cb);
@@ -234,7 +234,7 @@ int main(int argc, char **argv)
         case 1:
             /* Update the timestamp for the attitude message */
             attitude.header.stamp = ros::Time::now();
-            /* Call the stabilisation control with the following parameters and setpoints */
+            /* Call the stabilization control with the following parameters and setpoints */
             StabController(dv, Kv12, Param, Setpoint, controller_output);
             /* Convert the controller output to the attitude target/commands */
             force_attitude_convert(controller_output, attitude);
@@ -263,7 +263,7 @@ int main(int argc, char **argv)
             Setpoint[1] = 0.5;
             Setpoint[2] = -0.6;
 
-            /* Call the stabilisation control with the following parameters and setpoints */
+            /* Call the stabilization control with the following parameters and setpoints */
             StabController(dv, Kv12, Param, Setpoint, controller_output);
             /* Convert the controller output to the attitude target/commands */
             force_attitude_convert(controller_output, attitude);
@@ -294,7 +294,7 @@ int main(int argc, char **argv)
             Setpoint[1] = 0;
             Setpoint[2] = -0.3;
 
-            /* Call the stabilisation control with the following parameters and setpoints*/
+            /* Call the stabilization control with the following parameters and setpoints*/
             StabController(dv, Kv12, Param, Setpoint, controller_output);
             /* Convert the controller output to the attitude target/commands */
             force_attitude_convert(controller_output, attitude);
@@ -324,7 +324,7 @@ int main(int argc, char **argv)
             Setpoint[1] = 0;
             Setpoint[2] = -0.3;
 
-            /* Call the stabilisation control with the following parameters and setpoints */
+            /* Call the stabilization control with the following parameters and setpoints */
             StabController(dv, Kv12, Param, Setpoint, controller_output);
             /* Convert the controller output to the attitude target/commands */
             force_attitude_convert(controller_output, attitude);
@@ -351,7 +351,7 @@ int main(int argc, char **argv)
         case 5:
             /* Update the timestamp for the attitude message */
             attitude.header.stamp = ros::Time::now();
-            /* Call the trajectory tracking control with the following parameters and the time elasped since the last request */
+            /* Call the trajectory tracking control with the following parameters and the time elapsed since the last request */
             TracController(dv, Kv12, Param, ros::Time::now().toSec() - last_request.toSec(), controller_output);
             /* Convert the control output to the attitude target/commands */
             force_attitude_convert(controller_output, attitude);
@@ -461,6 +461,7 @@ int main(int argc, char **argv)
         //     }
         // }
 
+        /* spinOnce to handle all the callbacks */
         ros::spinOnce();
         rate.sleep();
     }
@@ -468,10 +469,18 @@ int main(int argc, char **argv)
     return 0;
 }
 
+/*
+This function converts the force output from the controller to the attitude target/commands (roll, pitch, yaw and thrust) for the drone.
+
+controller_output - contains the force output from the controller.
+attitude - reference to the attitude target for the drone to be updated.
+*/
 void force_attitude_convert(double controller_output[3], mavros_msgs::AttitudeTarget &attitude)
 {
     attitude.header.stamp = ros::Time::now();
+
     double roll, pitch, yaw, thrust;
+
     thrust = sqrt(controller_output[0] * controller_output[0] + controller_output[1] * controller_output[1] + controller_output[2] * controller_output[2]);
     yaw = 0;
     roll = std::asin(controller_output[1] / thrust);
@@ -479,6 +488,7 @@ void force_attitude_convert(double controller_output[3], mavros_msgs::AttitudeTa
 
     tf2::Quaternion attitude_target_q;
     attitude_target_q.setRPY(roll, pitch, yaw);
+
     attitude.orientation.x = attitude_target_q.getX();
     attitude.orientation.y = attitude_target_q.getY();
     attitude.orientation.z = attitude_target_q.getZ();

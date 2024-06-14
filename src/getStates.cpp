@@ -199,7 +199,7 @@ int main(int argc, char **argv)
             // ROS_INFO_STREAM( "dv[i]: "<< i << " : " << dv[i] << "\n");
         }
 
-        /* Calling Stabilisation controller with the following arguments */
+        /* Calling Stabilization controller with the following arguments */
         StabController(dv, Kv12, Param, Setpoint, controller_output);
 
         /* Converting the control output from the controller to attitude target for drone adn publishing it */
@@ -262,7 +262,7 @@ Callback function to update the current state of drone and load based on the pos
 
 This function updates the current local position and velocity of the drone and the load, whenever a new pose message is received.
 It also calculates the angles of the load (sls) based on the relative position of the drone and the load.
-It then calculates the gamma_alpha and gamma_beta values based on the angles recieved from the ToPenAngles, velocities of both the drone and the load, the pendulum's length (L).
+It then calculates the gamma_alpha and gamma_beta values based on the angles received from the ToPenAngles, velocities of both the drone and the load, the pendulum's length (L).
 */
 void pose_cb(const geometry_msgs::PoseStamped::ConstPtr &msg)
 {
