@@ -113,7 +113,7 @@ int main(int argc, char **argv)
         rate.sleep();
     }
 
-    /* Initialising the position to some default values */
+    /* Initialising the pose position and orientation to some default values */
     geometry_msgs::PoseStamped pose;
     pose.header.stamp = ros::Time::now();
     pose.header.frame_id = "map";
@@ -181,12 +181,13 @@ int main(int argc, char **argv)
         /* Switch cases to control the drone autopilot */
         switch (stage)
         {
-        case 0: // takeoff
-            /* If the drone is not offboard and the lat request was made 5s ago: */
+        /* Case 0: Takeoff */
+        case 0:
+            /* If the drone is not offboard and the last request was made 5s ago: */
             if (current_state.mode != "OFFBOARD" &&
                 (ros::Time::now() - last_request > ros::Duration(5.0)))
             {
-                /* Try to set the drone to offboard */
+                /* Try to set the drone to offboard mode */
                 if (set_mode_client.call(offb_set_mode) &&
                     offb_set_mode.response.mode_sent)
                 {
@@ -220,108 +221,168 @@ int main(int argc, char **argv)
             /* Check if the drone has been airborne for more than 10s and the difference in distance is less than 0.2 then: */
             if (ros::Time::now() - last_request > ros::Duration(10.0) && distance < 0.2)
             {
-                /* Move to the next stage */
+                /* Increment and move to the next stage */
                 stage += 1;
+                /* Update the last request time to the current time */
                 last_request = ros::Time::now();
+                /* Log the info */
                 ROS_INFO("Takeoff finished and switch to position setpoint control mode");
             }
             break;
 
-        case 1: // setpoint position control
+        /* Case 1: Setpoint position control */
+        case 1:
+            /* Update the timestamp for the attitude message */
             attitude.header.stamp = ros::Time::now();
+            /* Call the stabilisation control with the following parameters and setpoints */
             StabController(dv, Kv12, Param, Setpoint, controller_output);
+            /* Convert the controller output to the attitude target/commands */
             force_attitude_convert(controller_output, attitude);
+            /* Publish the attitude setpoint to the topic */
             attitude_setpoint_pub.publish(attitude);
 
+            /* Calculate the distance between the current local position and the setpoint */
             distance = std::pow((current_local_pos.pose.position.x - Setpoint[0]), 2) + std::pow((current_local_pos.pose.position.y - (-Setpoint[1])), 2) + std::pow((current_local_pos.pose.position.z - (-Setpoint[2] + 0.95)), 2);
             // ROS_INFO_STREAM("Distance: " << distance);
+
+            /* Check if the drone has been holding position for more than 15s and is close to the desired setpoint position then: */
             if (ros::Time::now() - last_request > ros::Duration(15.0) && distance < 0.2)
             {
+                /* Increment and move to the next stage */
                 stage += 1;
                 ROS_INFO("Achieve position setpoint and switch to Setpoint 1");
+                /* Update the last request time to the current time */
                 last_request = ros::Time::now();
             }
             break;
 
-        case 2: // setpoint position control
+        /* Case 2: Setpoint position control */
+        case 2:
+            /* Set new setpoints */
             Setpoint[0] = 1;
             Setpoint[1] = 0.5;
             Setpoint[2] = -0.6;
+
+            /* Call the stabilisation control with the following parameters and setpoints */
             StabController(dv, Kv12, Param, Setpoint, controller_output);
+            /* Convert the controller output to the attitude target/commands */
             force_attitude_convert(controller_output, attitude);
+            /* Update the timestamp for the attitude message */
             attitude.header.stamp = ros::Time::now();
+            /* Publish the attitude setpoint to the topic */
             attitude_setpoint_pub.publish(attitude);
 
+            /* Calculate the distance between the current local position and the new setpoint */
             distance = std::pow((current_local_pos.pose.position.x - Setpoint[0]), 2) + std::pow((current_local_pos.pose.position.y - (-Setpoint[1])), 2) + std::pow((current_local_pos.pose.position.z - (-Setpoint[2] + 0.95)), 2);
             // ROS_INFO_STREAM(" X: " << current_local_pos.pose.position.x << " Y: " << current_local_pos.pose.position.y << " Z: " << current_local_pos.pose.position.z);
             ROS_INFO_STREAM("Distance: " << distance);
+
+            /* Check if the drone has been holding position for more than 15s and is close to the desired setpoint position then: */
             if (ros::Time::now() - last_request > ros::Duration(15.0) && distance < 0.2)
             {
+                /* Increment and move to the next stage update the last request */
                 stage += 1;
                 ROS_INFO("Achieve position setpoint and switch to Setpoint 2");
                 last_request = ros::Time::now();
             }
             break;
 
-        case 3: // setpoint position control
+        /* Case 3: Setpoint position control */
+        case 3:
+            /* Set new setpoints*/
             Setpoint[0] = -1;
             Setpoint[1] = 0;
             Setpoint[2] = -0.3;
+
+            /* Call the stabilisation control with the following parameters and setpoints*/
             StabController(dv, Kv12, Param, Setpoint, controller_output);
+            /* Convert the controller output to the attitude target/commands */
             force_attitude_convert(controller_output, attitude);
+            /* Update the timestamp for the attitude message*/
             attitude.header.stamp = ros::Time::now();
+            /* Publish the attitude setpoint to the topic */
             attitude_setpoint_pub.publish(attitude);
 
+            /* Calculate the distance between the current local position and the new setpoints*/
             distance = std::pow((current_local_pos.pose.position.x - Setpoint[0]), 2) + std::pow((current_local_pos.pose.position.y - (-Setpoint[1])), 2) + std::pow((current_local_pos.pose.position.z - (-Setpoint[2] + 0.95)), 2);
             ROS_INFO_STREAM("Distance: " << distance);
+
+            /* Check if the drone has been holding position for more than 15s and is close to the desired setpoint position then: */
             if (ros::Time::now() - last_request > ros::Duration(15.0) && distance < 0.2)
             {
+                /* Increment and move to the next stage update the last request */
                 stage += 1;
                 ROS_INFO("Achieve position setpoint and switch to Setpoint 3");
                 last_request = ros::Time::now();
             }
             break;
 
-        case 4: // setpoint position control
+        /* Case 4: Setpoint position control */
+        case 4:
+            /* Set new setpoints*/
             Setpoint[0] = 0;
             Setpoint[1] = 0;
             Setpoint[2] = -0.3;
+
+            /* Call the stabilisation control with the following parameters and setpoints */
             StabController(dv, Kv12, Param, Setpoint, controller_output);
+            /* Convert the controller output to the attitude target/commands */
             force_attitude_convert(controller_output, attitude);
+            /* Update the timestamp for the attitude message */
             attitude.header.stamp = ros::Time::now();
+            /* Publish the attitude setpoint to the topic */
             attitude_setpoint_pub.publish(attitude);
 
+            /* Calculate the distance between the current local position and new set points */
             distance = std::pow((current_local_pos.pose.position.x - Setpoint[0]), 2) + std::pow((current_local_pos.pose.position.y - (-Setpoint[1])), 2) + std::pow((current_local_pos.pose.position.z - (-Setpoint[2] + 0.95)), 2);
             ROS_INFO_STREAM("Distance: " << distance);
+
+            /* Check if the drone has been holding position for more than 15s and is close to the desired setpoint position then: */
             if (ros::Time::now() - last_request > ros::Duration(15.0) && distance < 0.2)
             {
+                /* Increment and move to the next stage and update the last request */
                 stage += 1;
                 ROS_INFO("Achieve position setpoint and switch to Trajectory Tracking");
                 last_request = ros::Time::now();
             }
             break;
 
-        case 5: // Trajectory tracking
+        /* Case 5: Trajectory tracking */
+        case 5:
+            /* Update the timestamp for the attitude message */
             attitude.header.stamp = ros::Time::now();
+            /* Call the trajectory tracking control with the following parameters and the time elasped since the last request */
             TracController(dv, Kv12, Param, ros::Time::now().toSec() - last_request.toSec(), controller_output);
+            /* Convert the control output to the attitude target/commands */
             force_attitude_convert(controller_output, attitude);
+            /* Pubilsh the attitude setpoint to the topic */
             attitude_setpoint_pub.publish(attitude);
+
+            /* Check if it has been more than 32s since last trajectory update */
             if (ros::Time::now() - last_request > ros::Duration(32.0))
             {
+                /* Increment and move to the next stage, indicating the end of trajectory tracking */
                 stage += 1;
                 ROS_INFO("Finish Trajactory Tracking and land");
                 last_request = ros::Time::now();
             }
             break;
 
-        case 6: // land
+        /* Case 6: Landing */
+        case 6:
             pose.header.stamp = ros::Time::now();
             pose.header.frame_id = "map";
+            /* Setting the desired landing position*/
             pose.pose.position.x = 0;
             pose.pose.position.y = 0;
             pose.pose.position.z = 0.5;
+            /* Publish the landing position setpoint */
             local_pos_pub.publish(pose);
+
+            /* Calculate the distance between the current local position and the landing position - to determine if its close to the desired landing position */
             distance = std::pow((current_local_pos.pose.position.x - pose.pose.position.x), 2) + std::pow((current_local_pos.pose.position.y - pose.pose.position.y), 2) + std::pow((current_local_pos.pose.position.z - pose.pose.position.z), 2);
+
+            /* Check if it has been more than 5s since the last request then:*/
             if (ros::Time::now() - last_request > ros::Duration(5.0))
             {
                 // if(ros::Time::now() - last_request > ros::Duration(5.0) && distance < 0.2){
@@ -336,8 +397,11 @@ int main(int argc, char **argv)
                 // + std::pow((current_local_pos.pose.position.y - pose.pose.position.y),2)
                 // + std::pow((current_local_pos.pose.position.z - pose.pose.position.z),2);
                 // if(ros::Time::now() - last_request > ros::Duration(10.0) && distance < 0.1){
+
+                /* Attempt to switch the mode to land */
                 if (set_mode_client.call(land_mode) && land_mode.response.mode_sent)
                 {
+                    /* Increment the stage and log the info */
                     stage += 1;
                     ROS_INFO("Land finished");
                     // }
@@ -345,6 +409,7 @@ int main(int argc, char **argv)
             }
             break;
 
+        /* Default case - Switch to land mode */
         default:
             if (set_mode_client.call(land_mode) && land_mode.response.mode_sent)
             {
