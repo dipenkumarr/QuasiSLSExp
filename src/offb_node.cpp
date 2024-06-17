@@ -33,10 +33,11 @@ It is written with MAVROS, PX4 Pro Flight Stack and tested in Gazebo Classic SIT
 #include <iostream>
 
 /* Declaring the functions defined below */
-void PT_state_pub(ros::Publisher &sls_state_pub);
+void PT_state_pub(ros::Publisher &sls_state_pub); // not used
 void force_attitude_convert(double controller_output[3], mavros_msgs::AttitudeTarget &attitude);
 
 /* Global variables to store the data */
+// not used
 geometry_msgs::Pose quadpose;
 geometry_msgs::Pose loadpose;
 geometry_msgs::Pose pendpose;
@@ -187,7 +188,7 @@ int main(int argc, char **argv)
             if (current_state.mode != "OFFBOARD" &&
                 (ros::Time::now() - last_request > ros::Duration(5.0)))
             {
-                /* Try to set the drone to offboard mode */
+                /* Attempt to set the drone to offboard mode */
                 if (set_mode_client.call(offb_set_mode) &&
                     offb_set_mode.response.mode_sent)
                 {
@@ -201,7 +202,7 @@ int main(int argc, char **argv)
                 if (!current_state.armed &&
                     (ros::Time::now() - last_request > ros::Duration(5.0)))
                 {
-                    /* Try to arm the drone */
+                    /* Attempt to arm the drone */
                     if (arming_client.call(arm_cmd) &&
                         arm_cmd.response.success)
                     {

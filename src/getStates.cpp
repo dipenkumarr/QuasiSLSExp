@@ -71,7 +71,7 @@ T sigmoidf(T x)
 struct PendulumAngles
 {
     double alpha, beta; // roll(alpha) pitch(beta) yaw
-} penangle, penangle2;
+} penangle, penangle2;  // penangle2 not used
 
 /* Declaring the function defined below */
 PendulumAngles ToPenAngles(double Lx, double Ly, double Lz);
@@ -176,9 +176,9 @@ int main(int argc, char **argv)
     ros::Time last_request = ros::Time::now();
 
     /* Initialising some variables for drone controlling*/
-    double distance = 0;
+    double distance = 0; // not used
     double t0 = 0;
-    int stage = 0;
+    int stage = 0; // not used
 
     /* Main loop - Runs until ROS is running or any node fails */
     while (ros::ok())
@@ -202,7 +202,7 @@ int main(int argc, char **argv)
         /* Calling Stabilization controller with the following arguments */
         StabController(dv, Kv12, Param, Setpoint, controller_output);
 
-        /* Converting the control output from the controller to attitude target for drone adn publishing it */
+        /* Converting the control output from the controller to attitude target for drone and publishing it */
         force_attitude_convert(controller_output, attitude);
         attitude.header.stamp = ros::Time::now();
         target_attitude_pub.publish(attitude);
@@ -231,7 +231,7 @@ int main(int argc, char **argv)
 Function to publish the states of the drone system to the ROS topics
 
 It updates the PTState.PT_states array with the current position, velocity and angles of the drone system.
-It then uses sls_state_pub publisher to publish the PTState message to the particular ROS topic.
+It then uses sls_state_pub publisher to publish the PTState message.
 */
 void PT_state_pub(ros::Publisher &sls_state_pub)
 {
@@ -311,10 +311,8 @@ void pose_cb(const geometry_msgs::PoseStamped::ConstPtr &msg)
 }
 
 /*
-Function that calculates the angles of the pendulum based on the relative position of the load.
-
 This function calculates the angles of the pendulum based on the relative position of the load and the length of the pendulum.
-It then returns the structure 'angles' which contain the calculated angles (alpha and beta).
+It then returns the structure 'angles' which contains the calculated angles (alpha and beta).
 */
 PendulumAngles ToPenAngles(double Lx, double Ly, double Lz)
 { // x=base.x
@@ -327,7 +325,7 @@ PendulumAngles ToPenAngles(double Lx, double Ly, double Lz)
 
     // beta (y-axis rotation)
     double sinbeta = Lx / L;
-    double cosbeta = Lz / (L * std::cos(angles.alpha));
+    double cosbeta = Lz / (L * std::cos(angles.alpha)); // not used
     angles.beta = std::asin(sinbeta);
     // ROS_INFO_STREAM("beta: " << angles.beta << "\n");
     // alpha (x-axis rotation)
